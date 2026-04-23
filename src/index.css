@@ -1,0 +1,368 @@
+/* ── Reset & base ────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, sans-serif;
+  font-size: 15px;
+  background: #f0f2f5;
+  color: #1a1a1a;
+  min-height: 100vh;
+}
+
+/* ── Layout helpers ──────────────────────────────────────────────────────── */
+.page-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px 32px;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #dde1e7;
+  margin-bottom: 16px;
+}
+
+/* ── Cards / panels ──────────────────────────────────────────────────────── */
+.card {
+  background: #fff;
+  border: 1px solid #dde1e7;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid #dde1e7;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.panel.highlight {
+  border-color: #4a90d9;
+  background: #f0f6ff;
+}
+
+/* ── Forms ───────────────────────────────────────────────────────────────── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.form input[type="text"],
+.form input[type="email"],
+.form input[type="password"],
+.form input[type="number"],
+.form select {
+  padding: 8px 10px;
+  border: 1px solid #c8cdd5;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form input:focus,
+.form select:focus {
+  outline: 2px solid #4a90d9;
+  outline-offset: 1px;
+}
+
+fieldset {
+  border: 1px solid #c8cdd5;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+legend {
+  padding: 0 4px;
+  font-weight: 500;
+}
+
+.checkbox-label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-weight: normal;
+  margin-top: 4px;
+}
+
+.radio-row {
+  display: flex;
+  gap: 16px;
+}
+
+.radio-row label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-weight: normal;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn-primary {
+  background: #4a90d9;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 9px 18px;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) { background: #357abd; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-secondary {
+  background: #fff;
+  color: #4a90d9;
+  border: 1px solid #4a90d9;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.btn-secondary:hover { background: #f0f6ff; }
+.btn-secondary.small { padding: 4px 8px; font-size: 12px; }
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+.tab-row { display: flex; gap: 0; margin-bottom: 4px; }
+
+.tab {
+  flex: 1;
+  background: #f0f2f5;
+  border: 1px solid #c8cdd5;
+  padding: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.tab:first-child { border-radius: 6px 0 0 6px; }
+.tab:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
+.tab.active { background: #4a90d9; color: #fff; border-color: #4a90d9; }
+
+/* ── Notifications / errors ──────────────────────────────────────────────── */
+.error { color: #c0392b; font-size: 13px; }
+
+.banner {
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.banner.error { background: #fde8e8; border: 1px solid #f5c6cb; color: #c0392b; }
+.banner.info  { background: #e8f4fd; border: 1px solid #bee5eb; color: #0c5460; }
+
+/* ── Lobby ───────────────────────────────────────────────────────────────── */
+.lobby-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.lobby-grid .card { max-width: 100%; }
+
+.balance { color: #555; }
+
+/* ── Table page layout ───────────────────────────────────────────────────── */
+.table-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .table-layout { grid-template-columns: 1fr; }
+}
+
+/* ── Participants ────────────────────────────────────────────────────────── */
+.participant-list {
+  list-style: none;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.participant-list li {
+  background: #f0f2f5;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.participant-list li.active-seat {
+  background: #d4edda;
+  font-weight: 600;
+}
+
+.game-code {
+  font-family: monospace;
+  font-size: 20px;
+  letter-spacing: 2px;
+}
+
+/* ── WS status badge ─────────────────────────────────────────────────────── */
+.ws-badge { font-size: 12px; }
+.ws-badge.connected { color: #27ae60; }
+.ws-badge.disconnected { color: #e74c3c; }
+
+/* ── Game cards ──────────────────────────────────────────────────────────── */
+.card-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.card-btn {
+  background: #fff;
+  border: 2px solid #c8cdd5;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 15px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.1s;
+}
+
+.card-btn.legal {
+  border-color: #27ae60;
+  background: #eafaf1;
+}
+
+.card-btn.legal:hover { background: #d5f5e3; }
+.card-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* ── Trick display ───────────────────────────────────────────────────────── */
+.trick-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.trick-card {
+  background: #f0f2f5;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 14px;
+}
+
+/* ── Bid history ─────────────────────────────────────────────────────────── */
+.bid-history {
+  list-style: none;
+  font-size: 13px;
+  margin-bottom: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bid-history li {
+  background: #f0f2f5;
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+/* ── Result box ──────────────────────────────────────────────────────────── */
+.result-box {
+  background: #f0f2f5;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 13px;
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+/* ── Chat ────────────────────────────────────────────────────────────────── */
+.chat-panel { display: flex; flex-direction: column; }
+
+.chat-messages {
+  height: 260px;
+  overflow-y: auto;
+  border: 1px solid #dde1e7;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fafbfc;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-line { line-height: 1.4; word-break: break-word; }
+.chat-nick { font-weight: 600; color: #357abd; }
+
+.chat-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.chat-form input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid #c8cdd5;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+/* ── Rounds ──────────────────────────────────────────────────────────────── */
+.round-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.round-list li {
+  background: #f0f2f5;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.round-payouts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #555;
+}
+
+h1 { font-size: 22px; margin-bottom: 12px; }
+h2 { font-size: 18px; margin-bottom: 8px; }
+h3 { font-size: 15px; margin-bottom: 6px; }
