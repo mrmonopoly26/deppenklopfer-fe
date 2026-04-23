@@ -9,6 +9,12 @@ interface Props {
 }
 
 const ALL_MODES: GameMode[] = ['rufspiel', 'solo', 'wenz', 'ramsch'];
+const MODE_LABELS: Record<GameMode, string> = {
+  rufspiel: 'Rufspiel',
+  solo: 'Solo',
+  wenz: 'Wenz',
+  ramsch: 'Ramsch',
+};
 
 export function LobbyPage({ onJoinedTable }: Props) {
   const { auth, logout } = useApp();
@@ -57,7 +63,7 @@ export function LobbyPage({ onJoinedTable }: Props) {
       );
       onJoinedTable(table.game_code);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create table');
+      setError(err instanceof Error ? err.message : 'Tisch konnte nicht erstellt werden');
     } finally {
       setLoading(false);
     }
@@ -74,7 +80,7 @@ export function LobbyPage({ onJoinedTable }: Props) {
       );
       onJoinedTable(table.game_code);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not join table');
+      setError(err instanceof Error ? err.message : 'Beitreten fehlgeschlagen');
     } finally {
       setLoading(false);
     }
@@ -86,10 +92,10 @@ export function LobbyPage({ onJoinedTable }: Props) {
         <span>
           <strong>Deppenklopfer</strong> — {auth.email}
           {balance != null && (
-            <span className="balance"> · Balance: {balance.balance_eur.toFixed(2)} €</span>
+            <span className="balance"> · Kontostand: {balance.balance_eur.toFixed(2)} €</span>
           )}
         </span>
-        <button onClick={logout} className="btn-secondary">Logout</button>
+        <button onClick={logout} className="btn-secondary">Abmelden</button>
       </header>
 
       {error && <p className="error banner">{error}</p>}
@@ -97,20 +103,20 @@ export function LobbyPage({ onJoinedTable }: Props) {
       <div className="lobby-grid">
         {/* Create table */}
         <div className="card">
-          <h2>Create Table</h2>
+          <h2>Tisch erstellen</h2>
           <form onSubmit={handleCreate} className="form">
             <label>
-              Your nickname
+              Dein Spitzname
               <input
                 value={hostNickname}
                 onChange={(e) => setHostNickname(e.target.value)}
-                placeholder="Host"
+                placeholder="Gastgeber"
                 maxLength={64}
               />
             </label>
 
             <fieldset>
-              <legend>Game modes</legend>
+              <legend>Spielvarianten</legend>
               {ALL_MODES.map((mode) => (
                 <label key={mode} className="checkbox-label">
                   <input
@@ -118,13 +124,13 @@ export function LobbyPage({ onJoinedTable }: Props) {
                     checked={selectedModes.includes(mode)}
                     onChange={() => toggleMode(mode)}
                   />
-                  {mode}
+                  {MODE_LABELS[mode]}
                 </label>
               ))}
             </fieldset>
 
             <label>
-              Euro per point
+              Euro pro Punkt
               <input
                 type="number"
                 step="0.01"
@@ -135,7 +141,7 @@ export function LobbyPage({ onJoinedTable }: Props) {
             </label>
 
             <label>
-              Base reward (€)
+              Grundeinsatz (€)
               <input
                 type="number"
                 step="0.1"
@@ -146,17 +152,17 @@ export function LobbyPage({ onJoinedTable }: Props) {
             </label>
 
             <button type="submit" disabled={loading} className="btn-primary">
-              Create
+              Erstellen
             </button>
           </form>
         </div>
 
-        {/* Join table */}
+        {/* Tisch beitreten */}
         <div className="card">
-          <h2>Join Table</h2>
+          <h2>Tisch beitreten</h2>
           <form onSubmit={handleJoin} className="form">
             <label>
-              Game code (6 chars)
+              Spielcode (6 Zeichen)
               <input
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
@@ -167,18 +173,18 @@ export function LobbyPage({ onJoinedTable }: Props) {
             </label>
 
             <label>
-              Your nickname
+              Dein Spitzname
               <input
                 value={joinNickname}
                 onChange={(e) => setJoinNickname(e.target.value)}
                 maxLength={64}
-                placeholder="Player"
+                placeholder="Spieler"
                 required
               />
             </label>
 
             <button type="submit" disabled={loading} className="btn-primary">
-              Join
+              Beitreten
             </button>
           </form>
         </div>

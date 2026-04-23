@@ -36,19 +36,19 @@ export function AuthPage() {
             className={mode === 'login' ? 'tab active' : 'tab'}
             onClick={() => { setMode('login'); setError(''); }}
           >
-            Login
+            Anmelden
           </button>
           <button
             className={mode === 'register' ? 'tab active' : 'tab'}
             onClick={() => { setMode('register'); setError(''); }}
           >
-            Register
+            Registrieren
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="form">
           <label>
-            Email
+            E-Mail
             <input
               type="email"
               value={email}
@@ -59,7 +59,7 @@ export function AuthPage() {
           </label>
 
           <label>
-            Password
+            Passwort
             <input
               type="password"
               value={password}
@@ -72,7 +72,7 @@ export function AuthPage() {
           {error && <p className="error">{error}</p>}
 
           <button type="submit" disabled={loading} className="btn-primary">
-            {loading ? '…' : mode === 'login' ? 'Login' : 'Register'}
+            {loading ? '…' : mode === 'login' ? 'Anmelden' : 'Registrieren'}
           </button>
         </form>
       </div>

@@ -34,6 +34,27 @@ const SUIT_SYMBOLS: Record<string, string> = {
   schellen: '♦',
 };
 
+const SUIT_LABELS: Record<string, string> = {
+  eichel: 'Eichel',
+  gras: 'Gras',
+  herz: 'Herz',
+  schellen: 'Schellen',
+};
+
+const PHASE_LABELS: Record<string, string> = {
+  bidding: 'Ansage',
+  playing: 'Spiel',
+  closed: 'Abgeschlossen',
+  scoring: 'Abrechnung',
+};
+
+const CONTRACT_LABELS: Record<string, string> = {
+  rufer: 'Rufspiel',
+  solo: 'Solo',
+  wenz: 'Wenz',
+  ramsch: 'Ramsch',
+};
+
 function cardLabel(c: Card): string {
   return `${SUIT_SYMBOLS[c.suit] ?? c.suit} ${c.rank}`;
 }
@@ -43,7 +64,7 @@ function cardLabel(c: Card): string {
 function ParticipantList({ table, gameState }: { table: TableResponse; gameState: GameState | null }) {
   return (
     <div className="panel">
-      <h3>Participants</h3>
+      <h3>Spieler</h3>
       <ul className="participant-list">
         {table.participants.map((p) => {
           const isActive =
@@ -64,11 +85,11 @@ function ParticipantList({ table, gameState }: { table: TableResponse; gameState
 function GameStateDisplay({ gameState }: { gameState: GameState }) {
   return (
     <div className="panel">
-      <h3>Hand #{gameState.hand_number} — {gameState.phase}</h3>
+      <h3>Hand #{gameState.hand_number} — {PHASE_LABELS[gameState.phase] ?? gameState.phase}</h3>
       <p>
-        Contract: <strong>{gameState.contract_type ?? '—'}</strong>
-        {gameState.contract_suit ? ` (${gameState.contract_suit})` : ''}
-        {gameState.called_ace_suit ? `, called ace: ${gameState.called_ace_suit}` : ''}
+        Spielart: <strong>{gameState.contract_type ? (CONTRACT_LABELS[gameState.contract_type] ?? gameState.contract_type) : '—'}</strong>
+        {gameState.contract_suit ? ` (${SUIT_LABELS[gameState.contract_suit] ?? gameState.contract_suit})` : ''}
+        {gameState.called_ace_suit ? `, gerufene Sau: ${SUIT_LABELS[gameState.called_ace_suit] ?? gameState.called_ace_suit}` : ''}
       </p>
       {gameState.phase === 'closed' && gameState.result && (
         <pre className="result-box">{JSON.stringify(gameState.result, null, 2)}</pre>
@@ -77,7 +98,7 @@ function GameStateDisplay({ gameState }: { gameState: GameState }) {
       {/* Current trick */}
       {gameState.current_trick.length > 0 && (
         <div>
-          <strong>Current trick:</strong>
+          <strong>Aktueller Stich:</strong>
           <div className="trick-row">
             {gameState.current_trick.map((c) => (
               <span key={`${c.suit}${c.rank}${c.play_order}`} className="trick-card">
@@ -95,11 +116,13 @@ function BidPanel({
   gameState,
   mySeat,
   enabledModes,
+  cardsLoaded,
   onBid,
 }: {
   gameState: GameState;
   mySeat: number;
   enabledModes: string[];
+  cardsLoaded: boolean;
   onBid: (bid: Parameters<GameSocket['send']>[0] & { type: 'declare_bid' }) => void;
 }) {
   const [contract, setContract] = useState<ContractType>('rufer');
@@ -114,12 +137,21 @@ function BidPanel({
     if (gameState.phase === 'bidding') {
       return (
         <div className="panel">
-          <p>Waiting for <strong>{waitingFor?.nickname ?? '?'}</strong> to bid…</p>
+          <p>Warte auf <strong>{waitingFor?.nickname ?? '?'}</strong>…</p>
           <BidHistory bids={gameState.bids} participants={gameState.participants} />
         </div>
       );
     }
     return null;
+  }
+
+  if (!cardsLoaded) {
+    return (
+      <div className="panel highlight">
+        <h3>Deine Ansage</h3>
+        <p>Karten werden geladen…</p>
+      </div>
+    );
   }
 
   function submit(e: React.FormEvent) {
@@ -142,26 +174,26 @@ function BidPanel({
 
   return (
     <div className="panel highlight">
-      <h3>Your bid</h3>
+      <h3>Deine Ansage</h3>
       <BidHistory bids={gameState.bids} participants={gameState.participants} />
       <form onSubmit={submit} className="form">
         <div className="radio-row">
           <label>
             <input type="radio" name="decision" value="pass" checked={decision === 'pass'} onChange={() => setDecision('pass')} />
-            Pass
+            Weiter
           </label>
           <label>
             <input type="radio" name="decision" value="play" checked={decision === 'play'} onChange={() => setDecision('play')} />
-            Play
+            Spielen
           </label>
         </div>
 
         {decision === 'play' && (
           <>
             <label>
-              Contract
+              Spielart
               <select value={contract} onChange={(e) => setContract(e.target.value as ContractType)}>
-                {enabledModes.includes('rufspiel') && <option value="rufer">Rufer (Rufspiel)</option>}
+                {enabledModes.includes('rufspiel') && <option value="rufer">Rufspiel</option>}
                 {enabledModes.includes('solo') && <option value="solo">Solo</option>}
                 {enabledModes.includes('wenz') && <option value="wenz">Wenz</option>}
               </select>
@@ -169,25 +201,25 @@ function BidPanel({
 
             {contract === 'rufer' && (
               <label>
-                Called ace suit
+                Gerufene Sau
                 <select value={calledAce} onChange={(e) => setCalledAce(e.target.value as Suit)}>
-                  {ACE_SUITS.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {ACE_SUITS.map((s) => <option key={s} value={s}>{SUIT_LABELS[s]}</option>)}
                 </select>
               </label>
             )}
 
             {contract === 'solo' && (
               <label>
-                Solo suit
+                Trumpffarbe
                 <select value={suit} onChange={(e) => setSuit(e.target.value as Suit)}>
-                  {SUITS.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {SUITS.map((s) => <option key={s} value={s}>{SUIT_LABELS[s]}</option>)}
                 </select>
               </label>
             )}
           </>
         )}
 
-        <button type="submit" className="btn-primary">Confirm bid</button>
+        <button type="submit" className="btn-primary">Ansagen</button>
       </form>
     </div>
   );
@@ -207,7 +239,7 @@ function BidHistory({
       {bids.map((b) => (
         <li key={b.bid_order}>
           <strong>{byId[b.user_id] ?? b.user_id}</strong>:{' '}
-          {b.decision === 'pass' ? 'pass' : `${b.contract_type}${b.contract_suit ? ` (${b.contract_suit})` : ''}${b.called_ace_suit ? ` ace:${b.called_ace_suit}` : ''}`}
+          {b.decision === 'pass' ? 'Weiter' : `${b.contract_type ? (CONTRACT_LABELS[b.contract_type] ?? b.contract_type) : ''}${b.contract_suit ? ` (${SUIT_LABELS[b.contract_suit] ?? b.contract_suit})` : ''}${b.called_ace_suit ? ` Sau:${SUIT_LABELS[b.called_ace_suit] ?? b.called_ace_suit}` : ''}`}
         </li>
       ))}
     </ul>
@@ -238,10 +270,10 @@ function HandPanel({
   return (
     <div className="panel">
       <h3>
-        Your hand
+        Dein Blatt
         {isMyTurn && isPlayPhase && (
           <button onClick={onRequestLegal} className="btn-secondary small" style={{ marginLeft: 8 }}>
-            Show legal cards
+            Spielbare Karten
           </button>
         )}
       </h3>
@@ -256,7 +288,7 @@ function HandPanel({
               onClick={() => canPlay && isLegal && onPlay(c)}
               disabled={!canPlay || !isLegal}
               className={`card-btn ${isLegal && canPlay ? 'legal' : ''}`}
-              title={!isLegal ? 'Not legal to play' : ''}
+              title={!isLegal ? 'Nicht spielbar' : ''}
             >
               {cardLabel(c)}
             </button>
@@ -304,10 +336,10 @@ function ChatPanel({
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Message…"
+          placeholder="Nachricht…"
           maxLength={500}
         />
-        <button type="submit" className="btn-secondary">Send</button>
+        <button type="submit" className="btn-secondary">Senden</button>
       </form>
     </div>
   );
@@ -317,7 +349,7 @@ function RoundsPanel({ rounds }: { rounds: RoundItem[] }) {
   if (rounds.length === 0) return null;
   return (
     <div className="panel">
-      <h3>Rounds ({rounds.length})</h3>
+      <h3>Runden ({rounds.length})</h3>
       <ul className="round-list">
         {[...rounds].reverse().map((r) => (
           <li key={r.id}>
@@ -344,6 +376,7 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
   const [table, setTable] = useState<TableResponse | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [myCards, setMyCards] = useState<CardInHand[]>([]);
+  const [myHandId, setMyHandId] = useState<string>('');
   const [legalCards, setLegalCards] = useState<Card[]>([]);
   const [chat, setChat] = useState<ChatEntry[]>([]);
   const [rounds, setRounds] = useState<RoundItem[]>([]);
@@ -391,6 +424,7 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
           break;
         case 'my_hand':
           setMyCards(msg.cards);
+          setMyHandId(msg.hand_id);
           break;
         case 'legal_cards':
           setLegalCards(msg.cards);
@@ -407,16 +441,16 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
           ]);
           break;
         case 'participant_joined':
-          notify(`${msg.nickname} joined`);
+          notify(`${msg.nickname} ist beigetreten`);
           // Refresh table to get updated participant list
           tablesApi.getTable(gameCode, token).then(setTable).catch(() => null);
           break;
         case 'participant_left':
-          notify(`A player left`);
+          notify(`Ein Spieler hat verlassen`);
           tablesApi.getTable(gameCode, token).then(setTable).catch(() => null);
           break;
         case 'you_are_partner':
-          notify(`You are the partner! Called ace suit: ${msg.called_ace_suit}`);
+          notify(`Du bist der Partner! Gerufene Farbe: ${SUIT_LABELS[msg.called_ace_suit] ?? msg.called_ace_suit}`);
           break;
         case 'game_error':
           setWsError(msg.message);
@@ -446,6 +480,13 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
       setWsConnected(false);
     };
   }, [gameCode, token]);
+
+  // When a new hand starts, ensure we have cards for it
+  useEffect(() => {
+    if (gameState?.hand_id && gameState.hand_id !== myHandId) {
+      socketRef.current?.send({ type: 'my_hand' });
+    }
+  }, [gameState?.hand_id, myHandId]);
 
   // Reload rounds after each hand closes
   useEffect(() => {
@@ -480,7 +521,7 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
   const canStartHand = isHost && (!gameState || gameState.phase === 'closed') && (table?.participants.length ?? 0) >= 4;
 
   if (!table) {
-    return <div className="page-center"><p>Loading table…</p></div>;
+    return <div className="page-center"><p>Tisch wird geladen…</p></div>;
   }
 
   return (
@@ -488,10 +529,10 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
       <header className="top-bar">
         <span>
           Table <strong>{gameCode}</strong> · {table.status}
-          {!wsConnected && <span className="ws-badge disconnected"> ● offline</span>}
-          {wsConnected && <span className="ws-badge connected"> ● live</span>}
+          {!wsConnected && <span className="ws-badge disconnected"> ● getrennt</span>}
+          {wsConnected && <span className="ws-badge connected"> ● verbunden</span>}
         </span>
-        <button onClick={onLeaveTable} className="btn-secondary">← Leave</button>
+        <button onClick={onLeaveTable} className="btn-secondary">← Verlassen</button>
       </header>
 
       {notification && <p className="banner info">{notification}</p>}
@@ -504,16 +545,16 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
           {canStartHand && (
             <div className="panel">
               <button onClick={startHand} className="btn-primary">
-                Start Hand
+                Neue Hand
               </button>
             </div>
           )}
 
           {!canStartHand && !gameState && (table.participants.length ?? 0) < 4 && (
             <div className="panel">
-              <p>Waiting for players… ({table.participants.length}/4)</p>
+              <p>Warte auf Spieler… ({table.participants.length}/4)</p>
               <p>
-                Share this code: <strong className="game-code">{gameCode}</strong>
+                Spielcode: <strong className="game-code">{gameCode}</strong>
               </p>
             </div>
           )}
@@ -525,6 +566,7 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
               gameState={gameState}
               mySeat={mySeat}
               enabledModes={table.config.game_modes}
+              cardsLoaded={myHandId === gameState.hand_id}
               onBid={declareBid}
             />
           )}
