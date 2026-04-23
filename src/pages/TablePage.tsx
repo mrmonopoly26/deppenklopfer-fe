@@ -8,6 +8,7 @@ import type {
   CardInHand,
   ContractType,
   GameState,
+  Phase,
   RoundItem,
   Suit,
   TableResponse,
@@ -27,28 +28,28 @@ interface ChatEntry {
 
 // ─── Card display helpers ─────────────────────────────────────────────────────
 
-const SUIT_SYMBOLS: Record<string, string> = {
+const SUIT_SYMBOLS: Record<Suit, string> = {
   eichel: '♣',
   gras: '♠',
   herz: '♥',
   schellen: '♦',
 };
 
-const SUIT_LABELS: Record<string, string> = {
+const SUIT_LABELS: Record<Suit, string> = {
   eichel: 'Eichel',
   gras: 'Gras',
   herz: 'Herz',
   schellen: 'Schellen',
 };
 
-const PHASE_LABELS: Record<string, string> = {
+const PHASE_LABELS: Record<Phase, string> = {
   bidding: 'Ansage',
   playing: 'Spiel',
   closed: 'Abgeschlossen',
   scoring: 'Abrechnung',
 };
 
-const CONTRACT_LABELS: Record<string, string> = {
+const CONTRACT_LABELS: Record<ContractType, string> = {
   rufer: 'Rufspiel',
   solo: 'Solo',
   wenz: 'Wenz',
@@ -56,7 +57,7 @@ const CONTRACT_LABELS: Record<string, string> = {
 };
 
 function cardLabel(c: Card): string {
-  return `${SUIT_SYMBOLS[c.suit] ?? c.suit} ${c.rank}`;
+  return `${SUIT_SYMBOLS[c.suit]} ${c.rank}`;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -85,11 +86,11 @@ function ParticipantList({ table, gameState }: { table: TableResponse; gameState
 function GameStateDisplay({ gameState }: { gameState: GameState }) {
   return (
     <div className="panel">
-      <h3>Hand #{gameState.hand_number} — {PHASE_LABELS[gameState.phase] ?? gameState.phase}</h3>
+      <h3>Hand #{gameState.hand_number} — {PHASE_LABELS[gameState.phase]}</h3>
       <p>
-        Spielart: <strong>{gameState.contract_type ? (CONTRACT_LABELS[gameState.contract_type] ?? gameState.contract_type) : '—'}</strong>
-        {gameState.contract_suit ? ` (${SUIT_LABELS[gameState.contract_suit] ?? gameState.contract_suit})` : ''}
-        {gameState.called_ace_suit ? `, gerufene Sau: ${SUIT_LABELS[gameState.called_ace_suit] ?? gameState.called_ace_suit}` : ''}
+        Spielart: <strong>{gameState.contract_type ? CONTRACT_LABELS[gameState.contract_type] : '—'}</strong>
+        {gameState.contract_suit ? ` (${SUIT_LABELS[gameState.contract_suit]})` : ''}
+        {gameState.called_ace_suit ? `, gerufene Sau: ${SUIT_LABELS[gameState.called_ace_suit]}` : ''}
       </p>
       {gameState.phase === 'closed' && gameState.result && (
         <pre className="result-box">{JSON.stringify(gameState.result, null, 2)}</pre>
@@ -239,7 +240,7 @@ function BidHistory({
       {bids.map((b) => (
         <li key={b.bid_order}>
           <strong>{byId[b.user_id] ?? b.user_id}</strong>:{' '}
-          {b.decision === 'pass' ? 'Weiter' : `${b.contract_type ? (CONTRACT_LABELS[b.contract_type] ?? b.contract_type) : ''}${b.contract_suit ? ` (${SUIT_LABELS[b.contract_suit] ?? b.contract_suit})` : ''}${b.called_ace_suit ? ` Sau:${SUIT_LABELS[b.called_ace_suit] ?? b.called_ace_suit}` : ''}`}
+          {b.decision === 'pass' ? 'Weiter' : `${b.contract_type ? CONTRACT_LABELS[b.contract_type] : ''}${b.contract_suit ? ` (${SUIT_LABELS[b.contract_suit]})` : ''}${b.called_ace_suit ? ` Sau:${SUIT_LABELS[b.called_ace_suit]}` : ''}`}
         </li>
       ))}
     </ul>
@@ -385,14 +386,16 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
   const [wsConnected, setWsConnected] = useState(false);
 
   const socketRef = useRef<GameSocket | null>(null);
+  const notifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wsErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const mySeat =
     table?.participants.find((p) => p.user_id === userId)?.seat_number ?? -1;
 
-  // Flash a temporary notification
   function notify(msg: string) {
+    if (notifyTimerRef.current !== null) clearTimeout(notifyTimerRef.current);
     setNotification(msg);
-    setTimeout(() => setNotification(''), 3000);
+    notifyTimerRef.current = setTimeout(() => setNotification(''), 3000);
   }
 
   // Initial REST data load
@@ -450,26 +453,21 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
           tablesApi.getTable(gameCode, token).then(setTable).catch(() => null);
           break;
         case 'you_are_partner':
-          notify(`Du bist der Partner! Gerufene Farbe: ${SUIT_LABELS[msg.called_ace_suit] ?? msg.called_ace_suit}`);
+          notify(`Du bist der Partner! Gerufene Farbe: ${SUIT_LABELS[msg.called_ace_suit]}`);
           break;
         case 'game_error':
+          if (wsErrorTimerRef.current !== null) clearTimeout(wsErrorTimerRef.current);
           setWsError(msg.message);
-          setTimeout(() => setWsError(''), 4000);
+          wsErrorTimerRef.current = setTimeout(() => setWsError(''), 4000);
           break;
         case 'pong':
           break;
       }
     });
 
-    // Patch connect to track status
-    const originalConnect = socket.connect.bind(socket);
-    socket.connect = function () {
-      originalConnect();
+    socket.onOpen = () => {
       setWsConnected(true);
-      // Ask server for current hand state after connecting
-      setTimeout(() => {
-        socket.send({ type: 'my_hand' });
-      }, 200);
+      socket.send({ type: 'my_hand' });
     };
 
     socket.connect();
@@ -478,6 +476,8 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
     return () => {
       socket.disconnect();
       setWsConnected(false);
+      if (notifyTimerRef.current !== null) clearTimeout(notifyTimerRef.current);
+      if (wsErrorTimerRef.current !== null) clearTimeout(wsErrorTimerRef.current);
     };
   }, [gameCode, token]);
 

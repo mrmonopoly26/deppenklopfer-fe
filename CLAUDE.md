@@ -52,3 +52,7 @@ Full WS protocol + game rules: `../deppenklopfer-be/CLAUDE.md` and `../deppenklo
 ### File size
 
 Keep every file under 400 lines. `TablePage.tsx` is the longest; split out sub-components if it grows further.
+
+### Use of magic strings
+
+Do not use magic strings for things like contract types, message types, or card suits. Define them as TypeScript `enum`s or string literal unions in `src/types.ts` and import them where needed. This ensures type safety and consistency across the codebase.

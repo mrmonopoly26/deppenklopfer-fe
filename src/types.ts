@@ -95,6 +95,7 @@ export interface TransactionItem {
 export type Suit = 'eichel' | 'gras' | 'herz' | 'schellen';
 export type Rank = 'A' | '10' | 'K' | 'O' | 'U' | '9' | '8' | '7';
 export type ContractType = 'rufer' | 'solo' | 'wenz' | 'ramsch';
+export type Phase = 'bidding' | 'playing' | 'closed' | 'scoring';
 
 export interface Card {
   suit: Suit;
@@ -142,7 +143,7 @@ export type WsServerMessage =
 export interface GameState {
   hand_id: string;
   hand_number: number;
-  phase: 'bidding' | 'playing' | 'closed' | 'scoring';
+  phase: Phase;
   dealer_seat: number;
   forehand_seat: number;
   current_turn_seat: number | null;

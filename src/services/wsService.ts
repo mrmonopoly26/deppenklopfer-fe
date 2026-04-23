@@ -1,6 +1,7 @@
 import type { WsClientMessage, WsServerMessage } from '../types';
 
-const WS_BASE = `ws://${window.location.host}`;
+const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_BASE = `${WS_PROTOCOL}//${window.location.host}`;
 
 export type MessageHandler = (msg: WsServerMessage) => void;
 
@@ -10,6 +11,7 @@ export class GameSocket {
   private token: string;
   private handler: MessageHandler;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
+  onOpen: (() => void) | null = null;
 
   constructor(gameCode: string, token: string, handler: MessageHandler) {
     this.gameCode = gameCode;
@@ -23,6 +25,7 @@ export class GameSocket {
 
     this.ws.onopen = () => {
       this.pingInterval = setInterval(() => this.send({ type: 'ping' }), 30_000);
+      this.onOpen?.();
     };
 
     this.ws.onmessage = (event: MessageEvent) => {

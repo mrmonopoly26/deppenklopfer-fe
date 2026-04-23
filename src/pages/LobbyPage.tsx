@@ -47,6 +47,10 @@ export function LobbyPage({ onJoinedTable }: Props) {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    if (selectedModes.length === 0) {
+      setError('Mindestens eine Spielvariante wählen');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
@@ -136,7 +140,7 @@ export function LobbyPage({ onJoinedTable }: Props) {
                 step="0.01"
                 min="0"
                 value={euroPerPoint}
-                onChange={(e) => setEuroPerPoint(parseFloat(e.target.value))}
+                onChange={(e) => setEuroPerPoint(parseFloat(e.target.value) || 0)}
               />
             </label>
 
@@ -147,7 +151,7 @@ export function LobbyPage({ onJoinedTable }: Props) {
                 step="0.1"
                 min="0"
                 value={baseReward}
-                onChange={(e) => setBaseReward(parseFloat(e.target.value))}
+                onChange={(e) => setBaseReward(parseFloat(e.target.value) || 0)}
               />
             </label>
 
