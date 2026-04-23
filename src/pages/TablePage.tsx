@@ -28,16 +28,9 @@ interface ChatEntry {
 
 // ─── Card display helpers ─────────────────────────────────────────────────────
 
-const SUIT_SYMBOLS: Record<Suit, string> = {
-  eichel: '♣',
-  gras: '♠',
-  herz: '♥',
-  schellen: '♦',
-};
-
 const SUIT_LABELS: Record<Suit, string> = {
   eichel: 'Eichel',
-  gras: 'Gras',
+  gras: 'Blatt',
   herz: 'Herz',
   schellen: 'Schellen',
 };
@@ -57,7 +50,68 @@ const CONTRACT_LABELS: Record<ContractType, string> = {
 };
 
 function cardLabel(c: Card): string {
-  return `${SUIT_SYMBOLS[c.suit]} ${c.rank}`;
+  return `${SUIT_LABELS[c.suit]} ${c.rank}`;
+}
+
+// ─── Card sorting ─────────────────────────────────────────────────────────────
+
+// Suit display order for non-trump groups (left to right)
+const SUIT_GROUP_ORDER: Record<Suit, number> = { eichel: 0, gras: 1, herz: 2, schellen: 3 };
+
+// Strength within a side-suit for Rufer/Solo/Ramsch (O and U are always trump, excluded here)
+const SIDE_RANK_RUFER: Partial<Record<string, number>> = {
+  '7': 1, '8': 2, '9': 3, 'K': 4, '10': 5, 'A': 6,
+};
+
+// Strength within a side-suit for Wenz (O stays in suit)
+const SIDE_RANK_WENZ: Partial<Record<string, number>> = {
+  '7': 1, '8': 2, '9': 3, 'O': 4, 'K': 5, '10': 6, 'A': 7,
+};
+
+function getTrumpValue(c: Card, contractType: ContractType | null, trumpSuit: Suit): number {
+  // Returns > 0 if trump, the value indicates relative strength (higher = stronger).
+  // Returns -1 if not trump.
+  if (contractType === 'wenz') {
+    if (c.rank !== 'U') return -1;
+    const order: Record<Suit, number> = { eichel: 4, gras: 3, herz: 2, schellen: 1 };
+    return order[c.suit];
+  }
+  // Rufer, Solo, Ramsch, or null (default to Rufer ordering)
+  if (c.rank === 'O') {
+    const order: Record<Suit, number> = { eichel: 14, gras: 13, herz: 12, schellen: 11 };
+    return order[c.suit];
+  }
+  if (c.rank === 'U') {
+    const order: Record<Suit, number> = { eichel: 10, gras: 9, herz: 8, schellen: 7 };
+    return order[c.suit];
+  }
+  if (c.suit === trumpSuit) {
+    const order: Partial<Record<string, number>> = { '7': 1, '8': 2, '9': 3, 'K': 4, '10': 5, 'A': 6 };
+    return order[c.rank] ?? -1;
+  }
+  return -1;
+}
+
+function sortHand(cards: CardInHand[], contractType: ContractType | null, contractSuit: Suit | null): CardInHand[] {
+  const trumpSuit: Suit =
+    contractType === 'solo' && contractSuit ? contractSuit : 'herz';
+  const sideRank = contractType === 'wenz' ? SIDE_RANK_WENZ : SIDE_RANK_RUFER;
+
+  return [...cards].sort((a, b) => {
+    const av = getTrumpValue(a, contractType, trumpSuit);
+    const bv = getTrumpValue(b, contractType, trumpSuit);
+    const aTrump = av >= 0;
+    const bTrump = bv >= 0;
+
+    if (aTrump !== bTrump) return aTrump ? 1 : -1; // non-trumps left, trumps right
+
+    if (aTrump) return av - bv; // both trump: weakest first (strongest rightmost)
+
+    // Both non-trump: group by suit, then rank ascending (strongest rightmost)
+    const suitDiff = SUIT_GROUP_ORDER[a.suit] - SUIT_GROUP_ORDER[b.suit];
+    if (suitDiff !== 0) return suitDiff;
+    return (sideRank[a.rank] ?? 0) - (sideRank[b.rank] ?? 0);
+  });
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -252,6 +306,8 @@ function HandPanel({
   legalCards,
   isMyTurn,
   phase,
+  contractType,
+  contractSuit,
   onPlay,
   onRequestLegal,
 }: {
@@ -259,10 +315,12 @@ function HandPanel({
   legalCards: Card[];
   isMyTurn: boolean;
   phase: string;
+  contractType: ContractType | null;
+  contractSuit: Suit | null;
   onPlay: (c: Card) => void;
   onRequestLegal: () => void;
 }) {
-  const remaining = cards.filter((c) => !c.is_played);
+  const remaining = sortHand(cards.filter((c) => !c.is_played), contractType, contractSuit);
   if (remaining.length === 0) return null;
 
   const legalSet = new Set(legalCards.map((c) => `${c.suit}|${c.rank}`));
@@ -514,6 +572,11 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
 
   function playCard(c: Card) {
     setLegalCards([]);
+    setMyCards((prev) =>
+      prev.map((card) =>
+        card.suit === c.suit && card.rank === c.rank ? { ...card, is_played: true } : card
+      )
+    );
     socketRef.current?.send({ type: 'play_card', suit: c.suit, rank: c.rank });
   }
 
@@ -580,6 +643,8 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
               legalCards={legalCards}
               isMyTurn={gameState.current_turn_seat === mySeat}
               phase={gameState.phase}
+              contractType={gameState.contract_type}
+              contractSuit={gameState.contract_suit}
               onPlay={playCard}
               onRequestLegal={requestLegalCards}
             />
