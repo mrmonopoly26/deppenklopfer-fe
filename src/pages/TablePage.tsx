@@ -532,6 +532,9 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
           {!wsConnected && <span className="ws-badge disconnected"> ● getrennt</span>}
           {wsConnected && <span className="ws-badge connected"> ● verbunden</span>}
         </span>
+        <span className="player-name-badge">
+          {table.participants.find((p) => p.user_id === userId)?.nickname ?? ''}
+        </span>
         <button onClick={onLeaveTable} className="btn-secondary">← Verlassen</button>
       </header>
 

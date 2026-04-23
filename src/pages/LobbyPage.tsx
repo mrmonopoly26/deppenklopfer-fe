@@ -22,15 +22,17 @@ export function LobbyPage({ onJoinedTable }: Props) {
 
   const [balance, setBalance] = useState<BalanceResponse | null>(null);
 
+  const defaultNickname = auth.email?.split('@')[0] ?? '';
+
   // Create table form
-  const [hostNickname, setHostNickname] = useState('');
+  const [hostNickname, setHostNickname] = useState(defaultNickname);
   const [selectedModes, setSelectedModes] = useState<GameMode[]>(['rufspiel', 'wenz', 'ramsch']);
   const [euroPerPoint, setEuroPerPoint] = useState(0.1);
   const [baseReward, setBaseReward] = useState(1.0);
 
   // Join table form
   const [joinCode, setJoinCode] = useState('');
-  const [joinNickname, setJoinNickname] = useState('');
+  const [joinNickname, setJoinNickname] = useState(defaultNickname);
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

@@ -235,6 +235,7 @@ legend {
 .ws-badge { font-size: 12px; }
 .ws-badge.connected { color: #27ae60; }
 .ws-badge.disconnected { color: #e74c3c; }
+.player-name-badge { font-weight: 600; color: #2c3e50; }
 
 /* ── Game cards ──────────────────────────────────────────────────────────── */
 .card-row {
