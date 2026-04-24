@@ -26,7 +26,7 @@ export interface ChangeRequestConfirm {
 
 // ─── Tables ──────────────────────────────────────────────────────────────────
 
-export type GameMode = 'ramsch' | 'rufspiel' | 'solo' | 'wenz';
+export type GameMode = 'ramsch' | 'rufspiel' | 'solo' | 'wenz' | 'geier';
 
 export interface TableConfigPayload {
   game_modes: GameMode[];
@@ -94,7 +94,7 @@ export interface TransactionItem {
 
 export type Suit = 'eichel' | 'gras' | 'herz' | 'schellen';
 export type Rank = 'A' | '10' | 'K' | 'O' | 'U' | '9' | '8' | '7';
-export type ContractType = 'rufer' | 'solo' | 'wenz' | 'ramsch';
+export type ContractType = 'rufer' | 'solo' | 'wenz' | 'geier' | 'ramsch';
 export type Phase = 'bidding' | 'playing' | 'closed' | 'scoring';
 
 export interface Card {
@@ -128,6 +128,11 @@ export interface BidItem {
   bid_order: number;
 }
 
+export interface LegalBidContract {
+  contract_type: ContractType;
+  callable_suits?: Suit[];
+}
+
 // Server → Client messages
 export type WsServerMessage =
   | { type: 'pong'; timestamp: string }
@@ -138,6 +143,7 @@ export type WsServerMessage =
   | { type: 'game_state' } & GameState
   | { type: 'my_hand'; hand_id: string; cards: CardInHand[] }
   | { type: 'legal_cards'; hand_id?: string; cards: Card[]; message?: string }
+  | { type: 'legal_bids'; hand_id: string; contracts: LegalBidContract[] }
   | { type: 'you_are_partner'; hand_id: string; called_ace_suit: Suit };
 
 export interface GameState {
@@ -167,6 +173,7 @@ export type WsClientMessage =
   | { type: 'start_hand' }
   | { type: 'my_hand' }
   | { type: 'legal_cards' }
+  | { type: 'legal_bids' }
   | { type: 'declare_bid'; decision: 'pass' }
   | {
       type: 'declare_bid';
@@ -180,9 +187,6 @@ export type WsClientMessage =
       contract_type: 'solo';
       contract_suit: Suit;
     }
-  | {
-      type: 'declare_bid';
-      decision: 'play';
-      contract_type: 'wenz';
-    }
+  | { type: 'declare_bid'; decision: 'play'; contract_type: 'wenz' }
+  | { type: 'declare_bid'; decision: 'play'; contract_type: 'geier' }
   | { type: 'play_card'; suit: Suit; rank: Rank };

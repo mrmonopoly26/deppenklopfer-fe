@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import blattSvg from '../assets/suits-images/blatt.svg';
+import eichelSvg from '../assets/suits-images/eichel.svg';
+import herzSvg from '../assets/suits-images/herz.svg';
+import schellenSvg from '../assets/suits-images/schellen.svg';
 import * as tablesApi from '../api/tables';
 import { useApp } from '../context/AppContext';
 import { GameSocket } from '../services/wsService';
@@ -8,10 +12,13 @@ import type {
   CardInHand,
   ContractType,
   GameState,
+  LegalBidContract,
+  ParticipantItem,
   Phase,
   RoundItem,
   Suit,
   TableResponse,
+  TrickCard,
 } from '../types';
 
 interface Props {
@@ -35,6 +42,22 @@ const SUIT_LABELS: Record<Suit, string> = {
   schellen: 'Schellen',
 };
 
+const SUIT_ICONS: Record<Suit, string> = {
+  eichel: eichelSvg,
+  gras: blattSvg,
+  herz: herzSvg,
+  schellen: schellenSvg,
+};
+
+function CardFace({ card }: { card: Card }) {
+  return (
+    <span className="card-face">
+      <img src={SUIT_ICONS[card.suit]} className="suit-icon" alt={SUIT_LABELS[card.suit]} />
+      <span>{card.rank}</span>
+    </span>
+  );
+}
+
 const PHASE_LABELS: Record<Phase, string> = {
   bidding: 'Ansage',
   playing: 'Spiel',
@@ -46,12 +69,9 @@ const CONTRACT_LABELS: Record<ContractType, string> = {
   rufer: 'Rufspiel',
   solo: 'Solo',
   wenz: 'Wenz',
+  geier: 'Geier',
   ramsch: 'Ramsch',
 };
-
-function cardLabel(c: Card): string {
-  return `${SUIT_LABELS[c.suit]} ${c.rank}`;
-}
 
 // ─── Card sorting ─────────────────────────────────────────────────────────────
 
@@ -116,53 +136,87 @@ function sortHand(cards: CardInHand[], contractType: ContractType | null, contra
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function ParticipantList({ table, gameState }: { table: TableResponse; gameState: GameState | null }) {
+function ParticipantList({ participants }: { participants: ParticipantItem[] }) {
   return (
     <div className="panel">
       <h3>Spieler</h3>
       <ul className="participant-list">
-        {table.participants.map((p) => {
-          const isActive =
-            gameState?.current_turn_seat === p.seat_number &&
-            gameState?.phase !== 'closed';
-          return (
-            <li key={p.user_id} className={isActive ? 'active-seat' : ''}>
-              [{p.seat_number}] {p.nickname}
-              {isActive ? ' ◀' : ''}
-            </li>
-          );
-        })}
+        {participants.map((p) => (
+          <li key={p.user_id}>[{p.seat_number}] {p.nickname}</li>
+        ))}
       </ul>
     </div>
   );
 }
 
-function GameStateDisplay({ gameState }: { gameState: GameState }) {
-  return (
-    <div className="panel">
-      <h3>Hand #{gameState.hand_number} — {PHASE_LABELS[gameState.phase]}</h3>
-      <p>
-        Spielart: <strong>{gameState.contract_type ? CONTRACT_LABELS[gameState.contract_type] : '—'}</strong>
-        {gameState.contract_suit ? ` (${SUIT_LABELS[gameState.contract_suit]})` : ''}
-        {gameState.called_ace_suit ? `, gerufene Sau: ${SUIT_LABELS[gameState.called_ace_suit]}` : ''}
-      </p>
-      {gameState.phase === 'closed' && gameState.result && (
-        <pre className="result-box">{JSON.stringify(gameState.result, null, 2)}</pre>
-      )}
+// ─── Game table (square layout) ──────────────────────────────────────────────
 
-      {/* Current trick */}
-      {gameState.current_trick.length > 0 && (
-        <div>
-          <strong>Aktueller Stich:</strong>
-          <div className="trick-row">
-            {gameState.current_trick.map((c) => (
-              <span key={`${c.suit}${c.rank}${c.play_order}`} className="trick-card">
-                [{c.seat_number}] {cardLabel(c)}
+type SeatPos = 'top' | 'left' | 'right' | 'bottom';
+
+function seatToPos(seat: number, anchor: number): SeatPos {
+  const offset = ((seat - 1) - (anchor - 1) + 4) % 4;
+  return (['bottom', 'right', 'top', 'left'] as SeatPos[])[offset];
+}
+
+function GameTable({ gameState, mySeat }: { gameState: GameState; mySeat: number }) {
+  const anchor = mySeat !== -1 ? mySeat : (gameState.participants[0]?.seat_number ?? 1);
+
+  const byPos: Partial<Record<SeatPos, ParticipantItem>> = {};
+  gameState.participants.forEach((p) => { byPos[seatToPos(p.seat_number, anchor)] = p; });
+
+  const cardBySeat: Record<number, TrickCard> = {};
+  gameState.current_trick.forEach((c) => { cardBySeat[c.seat_number] = c; });
+
+  const renderSeat = (pos: SeatPos) => {
+    const p = byPos[pos];
+    if (!p) return <div key={pos} className={`table-seat table-seat-${pos}`} />;
+    const isActive = gameState.current_turn_seat === p.seat_number && gameState.phase !== 'closed';
+    const isDealer = gameState.dealer_seat === p.seat_number;
+    return (
+      <div key={pos} className={`table-seat table-seat-${pos}${isActive ? ' table-seat-active' : ''}`}>
+        <span className="table-seat-name">{p.nickname}{isDealer ? ' ·' : ''}</span>
+      </div>
+    );
+  };
+
+  const renderTrickSlot = (pos: SeatPos) => {
+    const p = byPos[pos];
+    const card = p ? cardBySeat[p.seat_number] : undefined;
+    return (
+      <div key={`slot-${pos}`} className={`trick-slot trick-slot-${pos}`}>
+        {card && <div className="trick-slot-card"><CardFace card={card} /></div>}
+      </div>
+    );
+  };
+
+  const positions: SeatPos[] = ['top', 'left', 'right', 'bottom'];
+
+  return (
+    <div className="game-table">
+      {positions.map(renderSeat)}
+      <div className="table-felt">
+        <div className="table-trick-grid">
+          {renderTrickSlot('top')}
+          {renderTrickSlot('left')}
+          <div className="table-center-info">
+            <span className="table-phase">{PHASE_LABELS[gameState.phase]}</span>
+            {gameState.contract_type && (
+              <span className="table-contract">
+                {CONTRACT_LABELS[gameState.contract_type]}
+                {gameState.contract_suit ? ` · ${SUIT_LABELS[gameState.contract_suit]}` : ''}
+                {gameState.called_ace_suit ? ` · Sau ${SUIT_LABELS[gameState.called_ace_suit]}` : ''}
               </span>
-            ))}
+            )}
+            {gameState.declarer_user_id && (
+              <span className="table-declarer">
+                {gameState.participants.find((p) => p.user_id === gameState.declarer_user_id)?.nickname ?? ''}
+              </span>
+            )}
           </div>
+          {renderTrickSlot('right')}
+          {renderTrickSlot('bottom')}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -170,13 +224,13 @@ function GameStateDisplay({ gameState }: { gameState: GameState }) {
 function BidPanel({
   gameState,
   mySeat,
-  enabledModes,
+  legalBids,
   cardsLoaded,
   onBid,
 }: {
   gameState: GameState;
   mySeat: number;
-  enabledModes: string[];
+  legalBids: LegalBidContract[] | null;
   cardsLoaded: boolean;
   onBid: (bid: Parameters<GameSocket['send']>[0] & { type: 'declare_bid' }) => void;
 }) {
@@ -184,6 +238,25 @@ function BidPanel({
   const [suit, setSuit] = useState<Suit>('eichel');
   const [calledAce, setCalledAce] = useState<Suit>('eichel');
   const [decision, setDecision] = useState<'pass' | 'play'>('pass');
+
+  const availableContracts = legalBids ?? [];
+  const rufspielBid = availableContracts.find((b) => b.contract_type === 'rufer');
+  const callableSuits = rufspielBid?.callable_suits ?? [];
+
+  // Keep contract selection valid when legalBids arrives
+  useEffect(() => {
+    if (legalBids && !legalBids.find((b) => b.contract_type === contract)) {
+      const first = legalBids[0]?.contract_type;
+      if (first) setContract(first);
+    }
+  }, [legalBids]);
+
+  // Keep calledAce valid when callable suits change
+  useEffect(() => {
+    if (callableSuits.length > 0 && !callableSuits.includes(calledAce)) {
+      setCalledAce(callableSuits[0]);
+    }
+  }, [callableSuits.join(',')]);
 
   if (gameState.phase !== 'bidding' || gameState.current_turn_seat !== mySeat) {
     const waitingFor = gameState.participants.find(
@@ -200,7 +273,7 @@ function BidPanel({
     return null;
   }
 
-  if (!cardsLoaded) {
+  if (!cardsLoaded || legalBids === null) {
     return (
       <div className="panel highlight">
         <h3>Deine Ansage</h3>
@@ -221,11 +294,12 @@ function BidPanel({
       onBid({ type: 'declare_bid', decision: 'play', contract_type: 'solo', contract_suit: suit });
     } else if (contract === 'wenz') {
       onBid({ type: 'declare_bid', decision: 'play', contract_type: 'wenz' });
+    } else if (contract === 'geier') {
+      onBid({ type: 'declare_bid', decision: 'play', contract_type: 'geier' });
     }
   }
 
   const SUITS: Suit[] = ['eichel', 'gras', 'herz', 'schellen'];
-  const ACE_SUITS: Suit[] = ['eichel', 'gras', 'schellen'];
 
   return (
     <div className="panel highlight">
@@ -248,9 +322,11 @@ function BidPanel({
             <label>
               Spielart
               <select value={contract} onChange={(e) => setContract(e.target.value as ContractType)}>
-                {enabledModes.includes('rufspiel') && <option value="rufer">Rufspiel</option>}
-                {enabledModes.includes('solo') && <option value="solo">Solo</option>}
-                {enabledModes.includes('wenz') && <option value="wenz">Wenz</option>}
+                {availableContracts.map((b) => (
+                  <option key={b.contract_type} value={b.contract_type}>
+                    {CONTRACT_LABELS[b.contract_type]}
+                  </option>
+                ))}
               </select>
             </label>
 
@@ -258,7 +334,7 @@ function BidPanel({
               <label>
                 Gerufene Sau
                 <select value={calledAce} onChange={(e) => setCalledAce(e.target.value as Suit)}>
-                  {ACE_SUITS.map((s) => <option key={s} value={s}>{SUIT_LABELS[s]}</option>)}
+                  {callableSuits.map((s) => <option key={s} value={s}>{SUIT_LABELS[s]}</option>)}
                 </select>
               </label>
             )}
@@ -349,7 +425,7 @@ function HandPanel({
               className={`card-btn ${isLegal && canPlay ? 'legal' : ''}`}
               title={!isLegal ? 'Nicht spielbar' : ''}
             >
-              {cardLabel(c)}
+              <CardFace card={c} />
             </button>
           );
         })}
@@ -437,6 +513,7 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
   const [myCards, setMyCards] = useState<CardInHand[]>([]);
   const [myHandId, setMyHandId] = useState<string>('');
   const [legalCards, setLegalCards] = useState<Card[]>([]);
+  const [legalBids, setLegalBids] = useState<LegalBidContract[] | null>(null);
   const [chat, setChat] = useState<ChatEntry[]>([]);
   const [rounds, setRounds] = useState<RoundItem[]>([]);
   const [wsError, setWsError] = useState('');
@@ -481,7 +558,8 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
       switch (msg.type) {
         case 'game_state':
           setGameState(msg);
-          setLegalCards([]); // reset on every new state
+          setLegalCards([]);
+          setLegalBids(null);
           break;
         case 'my_hand':
           setMyCards(msg.cards);
@@ -489,6 +567,9 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
           break;
         case 'legal_cards':
           setLegalCards(msg.cards);
+          break;
+        case 'legal_bids':
+          setLegalBids(msg.contracts);
           break;
         case 'chat_message':
           setChat((prev) => [
@@ -517,6 +598,9 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
           if (wsErrorTimerRef.current !== null) clearTimeout(wsErrorTimerRef.current);
           setWsError(msg.message);
           wsErrorTimerRef.current = setTimeout(() => setWsError(''), 4000);
+          // Re-sync hand in case an optimistic card play was rejected.
+          socketRef.current?.send({ type: 'my_hand' });
+          if (msg.legal_cards) setLegalCards(msg.legal_cards);
           break;
         case 'pong':
           break;
@@ -552,6 +636,17 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
       tablesApi.getRounds(gameCode, token).then(setRounds).catch(() => null);
     }
   }, [gameState?.phase, gameCode, token]);
+
+  // Fetch legal bids when it becomes our turn during the bidding phase
+  useEffect(() => {
+    if (
+      gameState?.phase === 'bidding' &&
+      gameState.current_turn_seat === mySeat &&
+      mySeat !== -1
+    ) {
+      socketRef.current?.send({ type: 'legal_bids' });
+    }
+  }, [gameState?.phase, gameState?.current_turn_seat, mySeat]);
 
   function sendMessage(msg: string) {
     socketRef.current?.send({ type: 'chat_message', message: msg });
@@ -606,7 +701,7 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
 
       <div className="table-layout">
         <div className="table-main">
-          <ParticipantList table={table} gameState={gameState} />
+          {!gameState && <ParticipantList participants={table.participants} />}
 
           {canStartHand && (
             <div className="panel">
@@ -616,7 +711,7 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
             </div>
           )}
 
-          {!canStartHand && !gameState && (table.participants.length ?? 0) < 4 && (
+          {!canStartHand && !gameState && table.participants.length < 4 && (
             <div className="panel">
               <p>Warte auf Spieler… ({table.participants.length}/4)</p>
               <p>
@@ -625,13 +720,20 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
             </div>
           )}
 
-          {gameState && <GameStateDisplay gameState={gameState} />}
+          {gameState && <GameTable gameState={gameState} mySeat={mySeat} />}
+
+          {gameState?.phase === 'closed' && gameState.result && (
+            <div className="panel">
+              <h3>Ergebnis</h3>
+              <pre className="result-box">{JSON.stringify(gameState.result, null, 2)}</pre>
+            </div>
+          )}
 
           {gameState && gameState.phase === 'bidding' && (
             <BidPanel
               gameState={gameState}
               mySeat={mySeat}
-              enabledModes={table.config.game_modes}
+              legalBids={legalBids}
               cardsLoaded={myHandId === gameState.hand_id}
               onBid={declareBid}
             />

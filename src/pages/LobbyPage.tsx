@@ -8,11 +8,12 @@ interface Props {
   onJoinedTable: (gameCode: string) => void;
 }
 
-const ALL_MODES: GameMode[] = ['rufspiel', 'solo', 'wenz', 'ramsch'];
+const ALL_MODES: GameMode[] = ['rufspiel', 'solo', 'wenz', 'geier', 'ramsch'];
 const MODE_LABELS: Record<GameMode, string> = {
   rufspiel: 'Rufspiel',
   solo: 'Solo',
   wenz: 'Wenz',
+  geier: 'Geier',
   ramsch: 'Ramsch',
 };
 
@@ -26,7 +27,7 @@ export function LobbyPage({ onJoinedTable }: Props) {
 
   // Create table form
   const [hostNickname, setHostNickname] = useState(defaultNickname);
-  const [selectedModes, setSelectedModes] = useState<GameMode[]>(['rufspiel', 'wenz', 'ramsch']);
+  const [selectedModes, setSelectedModes] = useState<GameMode[]>(ALL_MODES);
   const [euroPerPoint, setEuroPerPoint] = useState(0.1);
   const [baseReward, setBaseReward] = useState(1.0);
 
