@@ -155,7 +155,7 @@ type SeatPos = 'top' | 'left' | 'right' | 'bottom';
 
 function seatToPos(seat: number, anchor: number): SeatPos {
   const offset = ((seat - 1) - (anchor - 1) + 4) % 4;
-  return (['bottom', 'right', 'top', 'left'] as SeatPos[])[offset];
+  return (['bottom', 'left', 'top', 'right'] as SeatPos[])[offset];
 }
 
 function GameTable({ gameState, mySeat }: { gameState: GameState; mySeat: number }) {
