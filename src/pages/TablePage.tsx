@@ -306,15 +306,13 @@ function BidPanel({
       <h3>Deine Ansage</h3>
       <BidHistory bids={gameState.bids} participants={gameState.participants} />
       <form onSubmit={submit} className="form">
-        <div className="radio-row">
-          <label>
-            <input type="radio" name="decision" value="pass" checked={decision === 'pass'} onChange={() => setDecision('pass')} />
+        <div className="bid-pill-row">
+          <button type="button" className={`bid-pill${decision === 'pass' ? ' active' : ''}`} onClick={() => setDecision('pass')}>
             Weiter
-          </label>
-          <label>
-            <input type="radio" name="decision" value="play" checked={decision === 'play'} onChange={() => setDecision('play')} />
+          </button>
+          <button type="button" className={`bid-pill${decision === 'play' ? ' active' : ''}`} onClick={() => setDecision('play')}>
             Spielen
-          </label>
+          </button>
         </div>
 
         {decision === 'play' && (
@@ -520,6 +518,8 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
   const [notification, setNotification] = useState('');
   const [wsConnected, setWsConnected] = useState(false);
 
+  const [mobileTab, setMobileTab] = useState<'game' | 'chat' | 'rounds'>('game');
+
   const socketRef = useRef<GameSocket | null>(null);
   const notifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wsErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -704,7 +704,7 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
       {wsError && <p className="banner error">{wsError}</p>}
 
       <div className="table-layout">
-        <div className="table-main">
+        <div className={`table-main${mobileTab !== 'game' ? ' mobile-hidden' : ''}`}>
           {!gameState && <ParticipantList participants={table.participants} />}
 
           {canStartHand && (
@@ -757,11 +757,41 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
           )}
         </div>
 
-        <div className="table-side">
-          <ChatPanel entries={chat} onSend={sendMessage} />
-          <RoundsPanel rounds={rounds} />
+        <div className={`table-side${mobileTab === 'game' ? ' mobile-hidden' : ''}`}>
+          <div className={mobileTab === 'rounds' ? 'mobile-hidden' : ''}>
+            <ChatPanel entries={chat} onSend={sendMessage} />
+          </div>
+          <div className={mobileTab === 'chat' ? 'mobile-hidden' : ''}>
+            <RoundsPanel rounds={rounds} />
+          </div>
         </div>
       </div>
+
+      {(() => {
+        const isMyTurn = gameState?.current_turn_seat === mySeat && gameState?.phase !== 'closed';
+        return (
+          <nav className="mobile-tab-bar">
+            <button
+              className={`mobile-tab-btn${mobileTab === 'game' ? ' active' : ''}${isMyTurn && mobileTab !== 'game' ? ' urgent' : ''}`}
+              onClick={() => setMobileTab('game')}
+            >
+              Spiel
+            </button>
+            <button
+              className={`mobile-tab-btn${mobileTab === 'chat' ? ' active' : ''}`}
+              onClick={() => setMobileTab('chat')}
+            >
+              Chat
+            </button>
+            <button
+              className={`mobile-tab-btn${mobileTab === 'rounds' ? ' active' : ''}`}
+              onClick={() => setMobileTab('rounds')}
+            >
+              Runden
+            </button>
+          </nav>
+        );
+      })()}
     </div>
   );
 }
