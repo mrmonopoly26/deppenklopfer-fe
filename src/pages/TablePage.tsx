@@ -612,6 +612,10 @@ export function TablePage({ gameCode, onLeaveTable }: Props) {
       socket.send({ type: 'my_hand' });
     };
 
+    socket.onClose = () => {
+      setWsConnected(false);
+    };
+
     socket.connect();
     socketRef.current = socket;
 
